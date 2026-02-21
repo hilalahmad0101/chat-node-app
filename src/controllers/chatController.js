@@ -92,3 +92,26 @@ exports.clearChat = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Upload a file and return its URL
+exports.uploadFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const file = req.file;
+    const isImage = file.mimetype.startsWith("image/");
+    const fileUrl = `/uploads/${file.filename}`;
+
+    res.json({
+      fileUrl,
+      fileName: file.originalname,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      messageType: isImage ? "image" : "file",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
