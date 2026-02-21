@@ -27,6 +27,10 @@ exports.getMessages = async (req, res) => {
 
     const messages = await Message.find({ conversationId })
       .populate("senderId", "username avatar")
+      .populate({
+        path: "parentMessageId",
+        populate: { path: "senderId", select: "username" },
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

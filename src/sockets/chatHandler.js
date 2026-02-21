@@ -61,6 +61,10 @@ const chatHandler = (io, socket) => {
       const populatedMessage = await Message.findById(newMessage._id)
         .populate("senderId", "username avatar")
         .populate({
+          path: "parentMessageId",
+          populate: { path: "senderId", select: "username" },
+        })
+        .populate({
           path: "conversationId",
           populate: {
             path: "participants",
@@ -184,6 +188,8 @@ const chatHandler = (io, socket) => {
         fileName,
         fileSize,
         parentMessageId,
+        isForwarded,
+        originalMessageId,
       } = data;
 
       // Look up group by conversationId
@@ -209,6 +215,8 @@ const chatHandler = (io, socket) => {
         fileName,
         fileSize,
         parentMessageId,
+        isForwarded,
+        originalMessageId,
       });
 
       await Conversation.findByIdAndUpdate(conversationId, {
@@ -217,6 +225,10 @@ const chatHandler = (io, socket) => {
 
       const populatedMessage = await Message.findById(newMessage._id)
         .populate("senderId", "username avatar")
+        .populate({
+          path: "parentMessageId",
+          populate: { path: "senderId", select: "username" },
+        })
         .populate({
           path: "conversationId",
           populate: {
