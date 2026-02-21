@@ -87,16 +87,16 @@ const chatHandler = (io, socket) => {
   socket.on("mark_message_seen", async (data) => {
     try {
       const { messageId, senderId } = data;
+      // Skip system messages — they have no real sender
+      if (!senderId) return;
+
       const message = await Message.findByIdAndUpdate(
         messageId,
-        {
-          status: "seen",
-          seenAt: new Date(),
-        },
+        { status: "seen", seenAt: new Date() },
         { new: true },
       );
 
-      if (message) {
+      if (message && message.messageType !== "system") {
         io.to(senderId).emit("message_status_updated", {
           messageId,
           status: "seen",
@@ -177,16 +177,18 @@ const chatHandler = (io, socket) => {
   socket.on("send_group_message", async (data) => {
     try {
       const {
-        groupId,
         conversationId,
         content,
         messageType,
         fileUrl,
+        fileName,
+        fileSize,
         parentMessageId,
       } = data;
 
-      const group = await Group.findById(groupId);
-      if (!group) return;
+      // Look up group by conversationId
+      const group = await Group.findOne({ conversationId });
+      if (!group) return socket.emit("error", { message: "Group not found" });
 
       // Check if only admin can message
       if (
@@ -204,6 +206,8 @@ const chatHandler = (io, socket) => {
         content,
         messageType: messageType || "text",
         fileUrl,
+        fileName,
+        fileSize,
         parentMessageId,
       });
 
@@ -221,10 +225,13 @@ const chatHandler = (io, socket) => {
           },
         });
 
-      io.to(`group_${groupId}`).emit("receive_group_message", {
-        groupId,
+      io.to(`group_${group._id}`).emit("receive_group_message", {
+        groupId: group._id,
         message: populatedMessage,
       });
+
+      // Also confirm to sender
+      socket.emit("message_sent", populatedMessage);
     } catch (error) {
       logger.error(`Error sending group message: ${error.message}`);
     }
